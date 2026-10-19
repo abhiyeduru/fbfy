@@ -215,6 +215,8 @@ export function Hero3D({
               src={displayImage}
               alt={currentProduct.name}
               fill
+              quality={100}
+              unoptimized
               className={`object-contain object-center transition-transform duration-700 pointer-events-none ${
                 isBackView && zoomLevel === "normal"
                   ? "scale-x-[-1] brightness-95"

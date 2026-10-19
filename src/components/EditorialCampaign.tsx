@@ -60,6 +60,8 @@ export function EditorialCampaign() {
             src={looks[activeLook].image}
             alt={looks[activeLook].garment}
             fill
+            quality={95}
+            unoptimized
             className="object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-105"
             priority
           />
@@ -109,6 +111,8 @@ export function EditorialCampaign() {
               src="/assets/editorial_look_01.jpg"
               alt="Editorial Look 01"
               fill
+              quality={95}
+              unoptimized
               className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
             />
             <div className="absolute bottom-4 left-4 font-mono-clean text-[11px] text-white/80 bg-black/60 px-3 py-1.5 backdrop-blur-sm">
@@ -124,6 +128,8 @@ export function EditorialCampaign() {
               src="/assets/editorial_look_02.jpg"
               alt="Editorial Look 02"
               fill
+              quality={95}
+              unoptimized
               className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
             />
             <div className="absolute bottom-4 left-4 font-mono-clean text-[11px] text-white/80 bg-black/60 px-3 py-1.5 backdrop-blur-sm">

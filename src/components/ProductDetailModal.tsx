@@ -448,6 +448,8 @@ export function ProductDetailModal({
                       src={currentImage.url}
                       alt={currentImage.label}
                       fill
+                      quality={100}
+                      unoptimized
                       className={`object-contain object-center transition-all duration-300 pointer-events-none ${
                         viewMode === "zoom" ? "opacity-30" : "opacity-100"
                       }`}

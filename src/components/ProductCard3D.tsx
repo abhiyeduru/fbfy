@@ -67,6 +67,9 @@ export function ProductCard3D({ product, onSelectProduct }: ProductCard3DProps) 
           src={displayImage}
           alt={product.name}
           fill
+          quality={95}
+          unoptimized
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
 
