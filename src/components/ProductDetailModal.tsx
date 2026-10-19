@@ -188,6 +188,43 @@ export function ProductDetailModal({
     setIsDragging(false);
   };
 
+  const touchStartPos = useRef({ x: 0, y: 0 });
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      currentRotation.current = { ...rotation };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const deltaX = e.touches[0].clientX - startPos.current.x;
+    const deltaY = e.touches[0].clientY - startPos.current.y;
+    setRotation({
+      x: Math.max(-30, Math.min(30, currentRotation.current.x - deltaY * 0.25)),
+      y: currentRotation.current.y + deltaX * 0.45,
+    });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    setIsDragging(false);
+    if (e.changedTouches.length === 1) {
+      const swipeDistanceX = e.changedTouches[0].clientX - touchStartPos.current.x;
+      const swipeDistanceY = e.changedTouches[0].clientY - touchStartPos.current.y;
+      // If horizontal swipe is dominant and significant
+      if (Math.abs(swipeDistanceX) > 60 && Math.abs(swipeDistanceY) < 50) {
+        if (swipeDistanceX < 0) {
+          handleNextImage();
+        } else {
+          handlePrevImage();
+        }
+      }
+    }
+  };
+
   const handleMouseLeave = () => {
     setIsDragging(false);
     setIsHovering(false);
@@ -206,8 +243,8 @@ export function ProductDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-2 sm:p-4 md:p-6 overflow-y-auto">
-      <div className="relative w-full max-w-7xl bg-[#0a0a0d] border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden my-auto flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-0 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="relative w-full min-h-screen sm:min-h-0 sm:max-w-7xl bg-[#0a0a0d] border-0 sm:border sm:border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden my-auto flex flex-col pb-16 lg:pb-0">
         {/* Top Minimal Nav Bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#0e0e13]">
           <div className="flex items-center gap-3">
@@ -380,7 +417,10 @@ export function ProductDetailModal({
                 onMouseUp={handleMouseUp}
                 onMouseEnter={() => setIsHovering(true)}
                 onMouseLeave={handleMouseLeave}
-                className={`relative w-full h-[440px] sm:h-[500px] flex items-center justify-center select-none ${
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                className={`relative w-full h-[380px] sm:h-[460px] md:h-[500px] flex items-center justify-center select-none touch-none ${
                   viewMode === "zoom" ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"
                 }`}
                 style={{ perspective: "1300px" }}
@@ -660,6 +700,35 @@ export function ProductDetailModal({
               );
             })}
           </div>
+        </div>
+
+        {/* Mobile-Only Sticky Bottom Action Bar */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-[#0c0c10]/95 backdrop-blur-xl border-t border-white/15 z-50 flex items-center justify-between gap-3 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+          <div className="flex flex-col">
+            <span className="font-mono-clean text-[9px] text-[#8E8E93] uppercase">
+              {currentColor.name} • SIZE {selectedSize}
+            </span>
+            <span className="font-mono-clean text-xs font-bold text-white">
+              ₹{product.price.toLocaleString()}
+            </span>
+          </div>
+
+          <button
+            onClick={handleOrder}
+            className="flex-1 py-3 px-4 bg-white text-black font-mono-clean text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 shadow-xl active:scale-95"
+          >
+            {addedAnimation ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>ADDED!</span>
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-4 h-4" />
+                <span>ADD TO BAG</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

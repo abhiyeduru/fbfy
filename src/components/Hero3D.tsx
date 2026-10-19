@@ -115,6 +115,28 @@ export function Hero3D({
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      currentRotation.current = { ...rotation };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const deltaX = e.touches[0].clientX - startPos.current.x;
+    const deltaY = e.touches[0].clientY - startPos.current.y;
+    setRotation({
+      x: Math.max(-25, Math.min(25, currentRotation.current.x - deltaY * 0.25)),
+      y: currentRotation.current.y + deltaX * 0.45,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
   let displayImage = productImages[selectedImageIndex]?.url || currentProduct.imageFront;
   if (zoomLevel === "neck") {
     displayImage = "/assets/editorial_neck_05.jpg";
@@ -125,7 +147,7 @@ export function Hero3D({
   return (
     <section
       id="hero"
-      className="relative w-full h-screen min-h-[740px] flex items-center justify-center overflow-hidden bg-[#070709] select-none"
+      className="relative w-full min-h-[680px] md:min-h-[740px] h-[92vh] md:h-screen flex items-center justify-center overflow-hidden bg-[#070709] select-none pt-12 md:pt-0"
     >
       {/* Studio Lighting Background Glow & Subtle Grid */}
       <div className="absolute inset-0 studio-grid opacity-20 pointer-events-none" />
@@ -133,18 +155,18 @@ export function Hero3D({
 
       {/* Floating Monumental Brand Backdrop */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
-        <h1 className="text-[22vw] font-brand tracking-tighter text-[#121216] font-black leading-none opacity-40 blur-[1px]">
+        <h1 className="text-[28vw] md:text-[22vw] font-brand tracking-tighter text-[#121216] font-black leading-none opacity-40 blur-[1px]">
           fbfy
         </h1>
       </div>
 
       {/* Directional Studio Spotlight Beam Behind Shirt */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[500px] md:w-[600px] h-[340px] sm:h-[500px] md:h-[600px] bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Custom Name Input Bar */}
-      <div className="absolute top-20 md:top-24 z-30 flex items-center gap-2 p-1.5 bg-[#121217]/90 border border-white/10 backdrop-blur-md shadow-2xl">
-        <span className="font-mono-clean text-[10px] text-[#8E8E93] uppercase tracking-wider pl-2 hidden sm:inline">
-          ENTER YOUR NAME FOR HEM PRINT:
+      <div className="absolute top-16 md:top-24 z-30 flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-[#121217]/90 border border-white/10 backdrop-blur-md shadow-2xl max-w-[94vw] sm:max-w-none">
+        <span className="font-mono-clean text-[9px] sm:text-[10px] text-[#8E8E93] uppercase tracking-wider pl-1.5 hidden xs:inline">
+          NAME FOR HEM:
         </span>
         <input
           type="text"
@@ -152,9 +174,9 @@ export function Hero3D({
           value={customName}
           onChange={(e) => setCustomName(e.target.value.toUpperCase())}
           placeholder="YOUR NAME"
-          className="px-3 py-1.5 bg-black/60 border border-white/15 text-white font-mono-clean text-xs font-bold tracking-widest uppercase focus:border-white focus:outline-none w-36 sm:w-44 text-center"
+          className="px-2 sm:px-3 py-1 bg-black/60 border border-white/15 text-white font-mono-clean text-xs font-bold tracking-widest uppercase focus:border-white focus:outline-none w-28 sm:w-44 text-center"
         />
-        <div className="px-2.5 py-1.5 font-mono-clean text-[10px] text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/20">
+        <div className="px-2 py-1 font-mono-clean text-[9px] sm:text-[10px] text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/20 whitespace-nowrap">
           fbfy by {customName || "YOU"}
         </div>
       </div>
@@ -166,7 +188,10 @@ export function Hero3D({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        className="relative z-10 w-full max-w-2xl h-[560px] md:h-[630px] flex items-center justify-center cursor-grab active:cursor-grabbing px-4"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="relative z-10 w-full max-w-2xl h-[420px] sm:h-[520px] md:h-[630px] flex items-center justify-center cursor-grab active:cursor-grabbing px-4 touch-none"
         style={{ perspective: "1200px" }}
       >
         <div
@@ -233,8 +258,8 @@ export function Hero3D({
         </div>
       </div>
 
-      {/* Floating Left: Interactive Camera Presets */}
-      <div className="absolute left-6 md:left-12 bottom-12 md:bottom-16 z-20 flex flex-col gap-3">
+      {/* Desktop Floating Left: Interactive Camera Presets */}
+      <div className="hidden md:flex absolute left-6 md:left-12 bottom-12 md:bottom-16 z-20 flex-col gap-3">
         <span className="text-[10px] tracking-[0.25em] text-[#6E6E73] uppercase font-mono-clean mb-1">
           3D CAMERA REVEAL
         </span>
@@ -290,13 +315,13 @@ export function Hero3D({
         </div>
       </div>
 
-      {/* Floating Right: FBFY Design Selector & Order Trigger */}
-      <div className="absolute right-6 md:right-12 bottom-12 md:bottom-16 z-20 flex flex-col items-end gap-3 max-w-xs">
+      {/* Desktop Floating Right: FBFY Design Selector & Order Trigger */}
+      <div className="hidden md:flex absolute right-6 md:right-12 bottom-12 md:bottom-16 z-20 flex-col items-end gap-3 max-w-xs">
         <span className="text-[10px] tracking-[0.25em] text-[#6E6E73] uppercase font-mono-clean mb-1">
           FBFY PRINT SELECTOR
         </span>
 
-        {/* 4 Quick Design Thumbnails */}
+        {/* 5 Quick Design Thumbnails */}
         <div className="flex items-center gap-2 p-2 bg-[#111114]/80 border border-white/10 backdrop-blur-md">
           {PRODUCTS.slice(0, 5).map((prod, idx) => (
             <button
@@ -329,7 +354,6 @@ export function Hero3D({
             onClick={() => {
               setIsBackView(!isBackView);
               setZoomLevel("normal");
-              // If flipping, choose back or front from images
               const backIdx = productImages.findIndex((img) => img.id.includes("back"));
               if (!isBackView && backIdx !== -1) {
                 setSelectedImageIndex(backIdx);
@@ -376,10 +400,63 @@ export function Hero3D({
       </div>
 
       {/* Floating Center Bottom: One-by-One Views Gallery (Amazon/Netflix Style) */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center max-w-[90vw]">
-        <div className="flex items-center gap-1.5 p-1.5 bg-black/80 border border-white/15 backdrop-blur-md shadow-2xl overflow-x-auto max-w-full">
-          <span className="font-mono-clean text-[9px] text-[#8E8E93] uppercase tracking-wider px-2 hidden sm:inline">
-            3D ANGLES:
+      <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center w-full max-w-[96vw] px-2">
+        {/* Mobile-Only Quick Swatches & Controls */}
+        <div className="flex md:hidden items-center justify-between w-full max-w-sm mb-2 px-1">
+          {/* Quick Print Mini Swatches */}
+          <div className="flex items-center gap-1.5 p-1 bg-black/80 border border-white/15 backdrop-blur-md">
+            {PRODUCTS.slice(0, 5).map((prod, idx) => (
+              <button
+                key={prod.id}
+                onClick={() => {
+                  setSelectedProductIndex(idx);
+                  setSelectedImageIndex(0);
+                  setZoomLevel("normal");
+                }}
+                className={`relative w-6 h-7 border transition-all ${
+                  selectedProductIndex === idx
+                    ? "border-white ring-1 ring-white/50 scale-105"
+                    : "border-white/20 opacity-50"
+                }`}
+              >
+                <Image src={prod.imageFront} alt={prod.name} fill className="object-cover" />
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile Flip & Order */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                setIsBackView(!isBackView);
+                setZoomLevel("normal");
+                const backIdx = productImages.findIndex((img) => img.id.includes("back"));
+                if (!isBackView && backIdx !== -1) {
+                  setSelectedImageIndex(backIdx);
+                } else {
+                  setSelectedImageIndex(0);
+                }
+              }}
+              className="px-2.5 py-1 text-[10px] font-mono-clean uppercase bg-black/80 border border-white/15 text-white"
+            >
+              {isBackView ? "FRONT" : "BACK"}
+            </button>
+            {onOpenProductDetail && (
+              <button
+                onClick={onOpenProductDetail}
+                className="px-3 py-1 bg-white text-black font-mono-clean text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg"
+              >
+                <ShoppingBag className="w-3 h-3" />
+                <span>ORDER</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 3D Angles Selector Strip */}
+        <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-black/85 border border-white/15 backdrop-blur-md shadow-2xl overflow-x-auto max-w-full scrollbar-none">
+          <span className="font-mono-clean text-[9px] text-[#8E8E93] uppercase tracking-wider px-1.5 hidden sm:inline">
+            ANGLES:
           </span>
           {productImages.map((img, idx) => (
             <button
@@ -390,7 +467,7 @@ export function Hero3D({
                 if (img.id.includes("back")) setIsBackView(true);
                 else setIsBackView(false);
               }}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono-clean uppercase tracking-wider transition-all border ${
+              className={`flex items-center gap-1 px-2 py-1 text-[9px] sm:text-[10px] font-mono-clean uppercase tracking-wider transition-all border whitespace-nowrap ${
                 selectedImageIndex === idx && zoomLevel === "normal"
                   ? "bg-white text-black font-bold border-white"
                   : "bg-[#141418] text-[#8E8E93] border-white/10 hover:border-white/30 hover:text-white"
@@ -403,8 +480,8 @@ export function Hero3D({
             </button>
           ))}
         </div>
-        <span className="text-[9px] font-mono-clean tracking-[0.25em] uppercase text-white/50 mt-1.5">
-          CLICK T-SHIRT TO PREVIEW & ORDER
+        <span className="text-[8px] sm:text-[9px] font-mono-clean tracking-[0.2em] uppercase text-white/50 mt-1">
+          SWIPE / DRAG SHIRT IN 3D
         </span>
       </div>
     </section>
