@@ -51,6 +51,7 @@ export function ProductDetailModal({
   const stageRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const currentRotation = useRef({ x: 0, y: 0 });
+  const touchStartPos = useRef({ x: 0, y: 0 });
   const turntableTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Reset active image & rotation when product changes
@@ -65,16 +66,16 @@ export function ProductDetailModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (!product) return;
-      const imagesCount = galleryImages.length;
+      const count = product.images?.length || 2;
       if (e.key === "ArrowLeft") {
-        setActiveImageIndex((prev) => (prev - 1 + imagesCount) % imagesCount);
+        setActiveImageIndex((prev) => (prev - 1 + count) % count);
       } else if (e.key === "ArrowRight") {
-        setActiveImageIndex((prev) => (prev + 1) % imagesCount);
+        setActiveImageIndex((prev) => (prev + 1) % count);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  });
+  }, [product, onClose]);
 
   // Turntable animation
   useEffect(() => {
@@ -93,41 +94,41 @@ export function ProductDetailModal({
     };
   }, [viewMode, isTurntablePlaying]);
 
-  if (!product) return null;
-
   // Build the complete array of images (Amazon / Netflix style one-by-one gallery)
   const galleryImages: { id: string; label: string; url: string; isMacro?: boolean }[] = [];
-  if (product.images && product.images.length > 0) {
-    galleryImages.push(...product.images);
-  } else {
-    galleryImages.push(
-      { id: "front", label: "FRONT VIEW", url: product.imageFront },
-      { id: "back", label: "BACK GRAPHIC", url: product.imageBack || product.imageFront }
-    );
-  }
+  if (product) {
+    if (product.images && product.images.length > 0) {
+      galleryImages.push(...product.images);
+    } else {
+      galleryImages.push(
+        { id: "front", label: "FRONT VIEW", url: product.imageFront },
+        { id: "back", label: "BACK GRAPHIC", url: product.imageBack || product.imageFront }
+      );
+    }
 
-  // Ensure editorial / macro views are also available
-  if (!galleryImages.some((img) => img.id === "neck_macro")) {
-    galleryImages.push({
-      id: "neck_macro",
-      label: "NECK MONOGRAM",
-      url: "/assets/editorial_neck_05.jpg",
-      isMacro: true,
-    });
-  }
-  if (!galleryImages.some((img) => img.id === "hem_macro")) {
-    galleryImages.push({
-      id: "hem_macro",
-      label: "HEM SIGNATURE",
-      url: "/assets/editorial_hem_04.jpg",
-      isMacro: true,
-    });
+    // Ensure editorial / macro views are also available
+    if (!galleryImages.some((img) => img.id === "neck_macro")) {
+      galleryImages.push({
+        id: "neck_macro",
+        label: "NECK MONOGRAM",
+        url: "/assets/editorial_neck_05.jpg",
+        isMacro: true,
+      });
+    }
+    if (!galleryImages.some((img) => img.id === "hem_macro")) {
+      galleryImages.push({
+        id: "hem_macro",
+        label: "HEM SIGNATURE",
+        url: "/assets/editorial_hem_04.jpg",
+        isMacro: true,
+      });
+    }
   }
 
   const currentImage = galleryImages[activeImageIndex] || galleryImages[0];
-  const currentColor = selectedColor || product.availableColors[0];
+  const currentColor = selectedColor || (product ? product.availableColors[0] : null);
 
-  const currentIndex = allProducts.findIndex((p) => p.id === product.id);
+  const currentIndex = product ? allProducts.findIndex((p) => p.id === product.id) : 0;
   const handlePrevProduct = () => {
     const prevIndex = (currentIndex - 1 + allProducts.length) % allProducts.length;
     onSelectProduct(allProducts[prevIndex]);
@@ -188,8 +189,6 @@ export function ProductDetailModal({
     setIsDragging(false);
   };
 
-  const touchStartPos = useRef({ x: 0, y: 0 });
-
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
@@ -234,6 +233,7 @@ export function ProductDetailModal({
   };
 
   const handleOrder = () => {
+    if (!product || !currentColor) return;
     addToCart(product, currentColor, selectedSize, customName);
     setAddedAnimation(true);
     setTimeout(() => {
@@ -241,6 +241,9 @@ export function ProductDetailModal({
       onClose();
     }, 450);
   };
+
+  // Safe check before rendering JSX (All hooks are already guaranteed to have run at top level)
+  if (!product || !currentColor || !currentImage) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-0 sm:p-4 md:p-6 overflow-y-auto">
