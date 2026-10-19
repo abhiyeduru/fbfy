@@ -31,6 +31,8 @@ export function Navigation({ onOpenSearch, onOpenMenu }: NavigationProps) {
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.location.href = `/#${id}`;
     }
   };
 

@@ -30,6 +30,23 @@ export default function Home() {
     setActiveHeroPreset(preset);
   };
 
+  React.useEffect(() => {
+    const handleHash = () => {
+      if (typeof window !== "undefined" && window.location.hash) {
+        const id = window.location.hash.replace("#", "");
+        setTimeout(() => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 250);
+      }
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   return (
     <main className="relative bg-[#08080a] text-[#f4f4f2] min-h-screen">
       {/* Persistent Navigation */}
