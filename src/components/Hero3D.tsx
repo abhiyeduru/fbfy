@@ -34,14 +34,15 @@ export function Hero3D({
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const [zoomLevel, setZoomLevel] = useState<"normal" | "neck" | "hem">("normal");
 
-  const { customName, setCustomName } = useCartAuth();
+  const { customName, setCustomName, products: contextProducts } = useCartAuth();
+  const productsList = contextProducts && contextProducts.length > 0 ? contextProducts : PRODUCTS;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const currentRotation = useRef({ x: 0, y: 0 });
 
   const currentPreset = externalPreset || internalPreset;
-  const currentProduct = PRODUCTS[selectedProductIndex];
+  const currentProduct = productsList[selectedProductIndex] || productsList[0];
 
   // Gallery of one-by-one sliced views for the selected product
   const productImages = currentProduct.images && currentProduct.images.length > 0
@@ -323,7 +324,7 @@ export function Hero3D({
 
         {/* 5 Quick Design Thumbnails */}
         <div className="flex items-center gap-2 p-2 bg-[#111114]/80 border border-white/10 backdrop-blur-md">
-          {PRODUCTS.slice(0, 5).map((prod, idx) => (
+          {productsList.slice(0, 5).map((prod, idx) => (
             <button
               key={prod.id}
               onClick={() => {
@@ -405,7 +406,7 @@ export function Hero3D({
         <div className="flex md:hidden items-center justify-between w-full max-w-sm mb-2 px-1">
           {/* Quick Print Mini Swatches */}
           <div className="flex items-center gap-1.5 p-1 bg-black/80 border border-white/15 backdrop-blur-md">
-            {PRODUCTS.slice(0, 5).map((prod, idx) => (
+              {productsList.slice(0, 5).map((prod, idx) => (
               <button
                 key={prod.id}
                 onClick={() => {

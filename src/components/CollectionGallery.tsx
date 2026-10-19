@@ -7,17 +7,18 @@ import { ProductCard3D } from "./ProductCard3D";
 
 interface CollectionGalleryProps {
   onSelectProduct: (product: Product) => void;
+  products?: Product[];
 }
 
 const COLLECTIONS = ["ALL", "SIGNATURE", "GRAPHIC", "WASHED", "LIMITED"] as const;
 
-export function CollectionGallery({ onSelectProduct }: CollectionGalleryProps) {
+export function CollectionGallery({ onSelectProduct, products = PRODUCTS }: CollectionGalleryProps) {
   const [activeTab, setActiveTab] = useState<(typeof COLLECTIONS)[number]>("ALL");
 
   const filteredProducts =
     activeTab === "ALL"
-      ? PRODUCTS
-      : PRODUCTS.filter((p) => p.collection === activeTab);
+      ? products
+      : products.filter((p) => p.collection === activeTab);
 
   return (
     <section id="collection" className="relative w-full py-28 md:py-36 bg-[#08080a]">

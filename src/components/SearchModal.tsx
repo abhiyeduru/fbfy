@@ -10,12 +10,14 @@ interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectProduct: (product: Product) => void;
+  products?: Product[];
 }
 
 export function SearchModal({
   isOpen,
   onClose,
   onSelectProduct,
+  products = PRODUCTS,
 }: SearchModalProps) {
   const [query, setQuery] = useState("");
 
@@ -31,7 +33,7 @@ export function SearchModal({
 
   if (!isOpen) return null;
 
-  const filtered = PRODUCTS.filter((p) => {
+  const filtered = products.filter((p) => {
     const q = query.toLowerCase();
     return (
       p.name.toLowerCase().includes(q) ||

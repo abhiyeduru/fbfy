@@ -19,8 +19,11 @@ import { CheckoutModal } from "@/components/CheckoutModal";
 import { AuthModal } from "@/components/AuthModal";
 import { Product, CameraPreset } from "@/types";
 import { PRODUCTS } from "@/data/products";
+import { useCartAuth } from "@/context/CartAuthContext";
 
 export default function Home() {
+  const { products } = useCartAuth();
+  const currentProducts = products && products.length > 0 ? products : PRODUCTS;
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -59,7 +62,7 @@ export default function Home() {
       <Hero3D
         activePreset={activeHeroPreset}
         onPresetChange={handleHeroPresetChange}
-        onOpenProductDetail={() => setSelectedProduct(PRODUCTS[0])}
+        onOpenProductDetail={() => setSelectedProduct(currentProducts[0])}
       />
 
       {/* 02: Cinematic Brand Video Section */}
@@ -77,6 +80,7 @@ export default function Home() {
 
       {/* 05: 3D Product Collection Gallery */}
       <CollectionGallery
+        products={currentProducts}
         onSelectProduct={(product) => setSelectedProduct(product)}
       />
 
@@ -97,13 +101,14 @@ export default function Home() {
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
         onSelectProduct={(product) => setSelectedProduct(product)}
-        allProducts={PRODUCTS}
+        allProducts={currentProducts}
       />
 
       <SearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         onSelectProduct={(product) => setSelectedProduct(product)}
+        products={currentProducts}
       />
 
       <MenuDrawer
