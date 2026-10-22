@@ -17,6 +17,8 @@ import {
   Sparkles,
   Flame,
   Tag,
+  Home,
+  Rotate3d,
 } from "lucide-react";
 
 interface NavigationProps {
@@ -484,6 +486,59 @@ export function Navigation({ onOpenSearch, onOpenMenu }: NavigationProps) {
           className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm transition-opacity"
         />
       )}
+
+      {/* 03: Modern Streetwear Mobile Bottom App Bar (Sticky on phones) */}
+      <nav
+        aria-label="Mobile Bottom Navigation"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#08080c]/90 backdrop-blur-xl border-t border-white/[0.12] px-4 py-2 flex items-center justify-around shadow-2xl safe-area-pb"
+      >
+        <button
+          onClick={() => scrollToSection("hero")}
+          className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-white transition-colors"
+        >
+          <Home className="w-5 h-5" />
+          <span className="font-sans text-[9px] uppercase tracking-wider font-bold">Home</span>
+        </button>
+
+        <button
+          onClick={() => scrollToSection("collection")}
+          className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-white transition-colors"
+        >
+          <Tag className="w-5 h-5" />
+          <span className="font-sans text-[9px] uppercase tracking-wider font-bold">Shop</span>
+        </button>
+
+        <button
+          onClick={() => scrollToSection("studio")}
+          className="flex flex-col items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+        >
+          <Rotate3d className="w-5 h-5" />
+          <span className="font-sans text-[9px] uppercase tracking-wider font-bold">3D Studio</span>
+        </button>
+
+        <button
+          onClick={() => setIsWishlistOpen(true)}
+          className="relative flex flex-col items-center gap-1 text-[#8E8E93] hover:text-white transition-colors"
+        >
+          <Heart className={`w-5 h-5 ${wishlist.length > 0 ? "fill-rose-500 text-rose-500" : ""}`} />
+          {wishlist.length > 0 && (
+            <span className="absolute -top-1 right-2 w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-sans text-[8px] font-bold flex items-center justify-center">
+              {wishlist.length}
+            </span>
+          )}
+          <span className="font-sans text-[9px] uppercase tracking-wider font-bold">Wishlist</span>
+        </button>
+
+        <Link
+          href="/dashboard"
+          className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-white transition-colors"
+        >
+          <UserIcon className="w-5 h-5" />
+          <span className="font-sans text-[9px] uppercase tracking-wider font-bold">
+            {user ? "Account" : "Login"}
+          </span>
+        </Link>
+      </nav>
     </>
   );
 }

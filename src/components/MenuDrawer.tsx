@@ -109,6 +109,22 @@ export function MenuDrawer({
               <span>ABOUT</span>
               <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
+
+            <a
+              href="/dashboard"
+              className="w-full text-left font-brand text-2xl text-emerald-400 font-bold hover:text-emerald-300 transition-colors flex items-center justify-between group"
+            >
+              <span>CUSTOMER DASHBOARD</span>
+              <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
+
+            <a
+              href="/track"
+              className="w-full text-left font-brand text-2xl text-[#8E8E93] font-bold hover:text-white transition-colors flex items-center justify-between group"
+            >
+              <span>TRACK ORDER</span>
+              <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
           </nav>
 
           {/* 3D Camera Quick Triggers */}

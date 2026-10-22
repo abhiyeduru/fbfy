@@ -52,7 +52,7 @@ export function ProductCard3D({ product, onSelectProduct }: ProductCard3DProps) 
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative flex flex-col bg-[#0e0e13] border border-white/[0.08] hover:border-white/30 transition-all duration-300 rounded-xs overflow-hidden shadow-lg hover:shadow-2xl"
+      className="group relative flex flex-col bg-[#0c0c11] border border-white/[0.08] hover:border-white/30 transition-all duration-300 rounded-xs overflow-hidden luxury-card-glow cursor-pointer"
     >
       {/* Product Image Stage */}
       <div
