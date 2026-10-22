@@ -4,7 +4,15 @@ import React, { useState } from "react";
 import { useCartAuth } from "@/context/CartAuthContext";
 import { db } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
-import { X, CheckCircle, ShieldCheck, Truck, Loader2, CreditCard } from "lucide-react";
+import {
+  X,
+  CheckCircle,
+  ShieldCheck,
+  Truck,
+  Loader2,
+  CreditCard,
+  ArrowRight,
+} from "lucide-react";
 
 declare global {
   interface Window {
@@ -36,9 +44,15 @@ export function CheckoutModal() {
     isCheckoutOpen,
     setIsCheckoutOpen,
     cartItems,
+    cartSubtotal,
+    cartDiscount,
+    cartShippingFee,
     cartTotal,
+    appliedCoupon,
     clearCart,
     user,
+    setIsAuthOpen,
+    setIsTrackOrderOpen,
   } = useCartAuth();
 
   const [formData, setFormData] = useState({
@@ -47,6 +61,7 @@ export function CheckoutModal() {
     phone: "",
     address: "",
     city: "",
+    state: "Karnataka",
     postalCode: "",
     paymentMethod: "Razorpay", // Default to Razorpay
   });
@@ -57,21 +72,28 @@ export function CheckoutModal() {
 
   if (!isCheckoutOpen) return null;
 
-  const saveOrderToFirestore = async (paymentStatus: string, razorpayPaymentId?: string) => {
+  const saveOrderToFirestore = async (paymentStatus: "PENDING" | "PAID" | "COD_PENDING", razorpayPaymentId?: string) => {
     const orderData = {
       customerName: formData.name,
       customerEmail: formData.email,
       customerPhone: formData.phone,
       address: formData.address,
       city: formData.city,
+      state: formData.state,
       postalCode: formData.postalCode,
       paymentMethod: formData.paymentMethod,
       paymentStatus,
       razorpayPaymentId: razorpayPaymentId || null,
       items: cartItems,
+      subtotal: cartSubtotal,
+      discount: cartDiscount,
+      couponCode: appliedCoupon?.code || null,
+      shippingFee: cartShippingFee,
       totalAmount: cartTotal,
       currency: "INR",
       status: "CONFIRMED",
+      courierPartner: "BlueDart Express",
+      trackingNumber: "BD-" + Math.floor(1000000000 + Math.random() * 9000000000),
       createdAt: Date.now(),
       userUid: user?.uid || "guest",
     };
@@ -94,11 +116,18 @@ export function CheckoutModal() {
     e.preventDefault();
     if (cartItems.length === 0) return;
 
+    // Auth Gate: ensure customer is authenticated so their order links directly to their account
+    if (!user) {
+      alert("Please sign in or create an account to proceed with your order.");
+      setIsCheckoutOpen(false);
+      setIsAuthOpen(true);
+      return;
+    }
+
     setIsSubmitting(true);
 
     if (formData.paymentMethod === "Cash on Delivery") {
-      // Direct Cash on Delivery submission
-      await saveOrderToFirestore("PENDING (COD)");
+      await saveOrderToFirestore("COD_PENDING");
       setIsSubmitting(false);
       return;
     }
@@ -124,7 +153,7 @@ export function CheckoutModal() {
         key: keyId,
         amount: Math.round(cartTotal * 100), // in paise
         currency: "INR",
-        name: "fbfy",
+        name: "FBFY",
         description: customDescription,
         image: "https://www.fbfy.in/favicon.ico",
         prefill: {
@@ -154,7 +183,6 @@ export function CheckoutModal() {
       rzp.open();
     } catch (err) {
       console.error("Razorpay launch error:", err);
-      // If Razorpay popup blocked or error occurs, offer fallback
       alert("Payment gateway initialized. If the popup was blocked, please allow popups.");
       setIsSubmitting(false);
     }
@@ -168,7 +196,7 @@ export function CheckoutModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-[#0c0c10] border border-white/10 shadow-2xl p-6 md:p-8 my-auto">
+      <div className="relative w-full max-w-2xl bg-[#0c0c10] border border-white/10 shadow-2xl p-6 md:p-8 my-auto text-white rounded-sm">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
           <span className="font-brand text-xl text-white font-bold tracking-tight">
@@ -186,9 +214,9 @@ export function CheckoutModal() {
 
         {orderConfirmed ? (
           /* Confirmation Screen */
-          <div className="text-center py-8">
-            <CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4 animate-bounce" />
-            <h3 className="font-brand text-2xl text-white font-bold mb-2">
+          <div className="text-center py-6">
+            <CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
+            <h3 className="font-brand text-2xl text-white font-bold mb-1">
               YOUR ORDER HAS BEEN PLACED
             </h3>
             <p className="font-mono-clean text-xs text-[#8E8E93] mb-6">
@@ -196,7 +224,7 @@ export function CheckoutModal() {
               <span className="text-white font-bold">{orderConfirmed}</span>
             </p>
 
-            <div className="bg-[#121217] border border-white/10 p-4 max-w-md mx-auto text-left font-mono-clean text-xs text-[#A1A1A6] mb-8 space-y-2">
+            <div className="bg-[#121217] border border-white/10 p-4 max-w-md mx-auto text-left font-mono-clean text-xs text-[#A1A1A6] mb-6 space-y-2 rounded-xs">
               <div className="flex justify-between">
                 <span>SHIPPING TO:</span>
                 <span className="text-white font-semibold">{formData.name}</span>
@@ -213,42 +241,54 @@ export function CheckoutModal() {
               </div>
               {confirmedPaymentId && (
                 <div className="flex justify-between text-emerald-400">
-                  <span>RAZORPAY PAYMENT ID:</span>
+                  <span>RAZORPAY ID:</span>
                   <span className="font-mono font-bold">{confirmedPaymentId}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span>STATUS:</span>
                 <span className="text-emerald-400 font-bold">
-                  {confirmedPaymentId ? "PAID (RECORDED IN FIREBASE)" : "CONFIRMED (STORED IN FIREBASE)"}
+                  CONFIRMED & ALLOCATED
                 </span>
               </div>
             </div>
 
-            <button
-              onClick={handleClose}
-              className="px-8 py-3 bg-white text-black font-mono-clean text-xs uppercase tracking-widest font-bold hover:bg-[#E8E8E4] transition-colors"
-            >
-              RETURN TO ATELIER
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  handleClose();
+                  setIsTrackOrderOpen(true);
+                }}
+                className="w-full sm:w-auto px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-mono-clean text-xs uppercase tracking-widest font-bold transition-all flex items-center justify-center gap-2 rounded-xs"
+              >
+                <Truck className="w-4 h-4" />
+                Track This Shipment
+              </button>
+              <button
+                onClick={handleClose}
+                className="w-full sm:w-auto px-6 py-3 bg-white/10 hover:bg-white hover:text-black text-white font-mono-clean text-xs uppercase tracking-widest font-bold transition-all rounded-xs"
+              >
+                Return to Atelier
+              </button>
+            </div>
           </div>
         ) : (
           /* Checkout Form */
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Order Summary Pill */}
-            <div className="flex items-center justify-between p-3 bg-[#121217] border border-white/5 font-mono-clean text-xs">
+            <div className="flex items-center justify-between p-3.5 bg-[#121217] border border-white/5 font-mono-clean text-xs rounded-xs">
               <span className="text-[#8E8E93]">
-                {cartItems.length} ITEM(S) WITH PERSONALIZED SIGNATURE
+                {cartItems.length} ITEM(S) • CUSTOM LASER ENGRAVED
               </span>
               <span className="text-white font-bold text-sm">
-                TOTAL: ₹{cartTotal.toLocaleString()}
+                TOTAL: ₹{cartTotal.toLocaleString("en-IN")}
               </span>
             </div>
 
             {/* Customer Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <div>
-                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1.5">
+                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1">
                   FULL NAME *
                 </label>
                 <input
@@ -258,13 +298,13 @@ export function CheckoutModal() {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  placeholder="e.g. John Doe"
-                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none"
+                  placeholder="e.g. Abhi Yeduru"
+                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none rounded-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1.5">
+                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1">
                   PHONE NUMBER *
                 </label>
                 <input
@@ -275,12 +315,12 @@ export function CheckoutModal() {
                     setFormData({ ...formData, phone: e.target.value })
                   }
                   placeholder="+91 98765 43210"
-                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none"
+                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none rounded-xs"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1.5">
+                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1">
                   EMAIL ADDRESS *
                 </label>
                 <input
@@ -290,13 +330,13 @@ export function CheckoutModal() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  placeholder="john@example.com"
-                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none"
+                  placeholder="abhi@example.com"
+                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none rounded-xs"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1.5">
+                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1">
                   DELIVERY ADDRESS *
                 </label>
                 <input
@@ -306,13 +346,13 @@ export function CheckoutModal() {
                   onChange={(e) =>
                     setFormData({ ...formData, address: e.target.value })
                   }
-                  placeholder="Street Address, Apartment, Flat"
-                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none"
+                  placeholder="Flat / Building, Street, Landmark"
+                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none rounded-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1.5">
+                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1">
                   CITY *
                 </label>
                 <input
@@ -322,24 +362,25 @@ export function CheckoutModal() {
                   onChange={(e) =>
                     setFormData({ ...formData, city: e.target.value })
                   }
-                  placeholder="City"
-                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none"
+                  placeholder="Bengaluru"
+                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none rounded-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1.5">
+                <label className="block font-mono-clean text-[10px] uppercase text-[#8E8E93] mb-1">
                   PINCODE / POSTAL CODE *
                 </label>
                 <input
                   type="text"
                   required
+                  maxLength={6}
                   value={formData.postalCode}
                   onChange={(e) =>
                     setFormData({ ...formData, postalCode: e.target.value })
                   }
-                  placeholder="500001"
-                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none"
+                  placeholder="560038"
+                  className="w-full px-3.5 py-2.5 bg-[#141419] border border-white/10 text-white font-mono-clean text-xs focus:border-white focus:outline-none rounded-xs"
                 />
               </div>
             </div>
@@ -351,7 +392,7 @@ export function CheckoutModal() {
                   SELECT PAYMENT METHOD
                 </label>
                 <span className="font-mono-clean text-[10px] text-emerald-400">
-                  RAZORPAY VERIFIED GATEWAY
+                  SECURE CHECKOUT
                 </span>
               </div>
 
@@ -361,7 +402,7 @@ export function CheckoutModal() {
                   onClick={() =>
                     setFormData({ ...formData, paymentMethod: "Razorpay" })
                   }
-                  className={`p-3.5 text-left border font-mono-clean text-xs transition-all flex flex-col justify-between ${
+                  className={`p-3.5 text-left border font-mono-clean text-xs transition-all flex flex-col justify-between rounded-xs ${
                     formData.paymentMethod === "Razorpay"
                       ? "bg-white text-black border-white font-bold shadow-lg"
                       : "bg-[#141419] text-[#8E8E93] border-white/10 hover:border-white/30"
@@ -386,7 +427,7 @@ export function CheckoutModal() {
                   onClick={() =>
                     setFormData({ ...formData, paymentMethod: "Cash on Delivery" })
                   }
-                  className={`p-3.5 text-left border font-mono-clean text-xs transition-all flex flex-col justify-between ${
+                  className={`p-3.5 text-left border font-mono-clean text-xs transition-all flex flex-col justify-between rounded-xs ${
                     formData.paymentMethod === "Cash on Delivery"
                       ? "bg-white text-black border-white font-bold shadow-lg"
                       : "bg-[#141419] text-[#8E8E93] border-white/10 hover:border-white/30"
@@ -406,11 +447,11 @@ export function CheckoutModal() {
             </div>
 
             {/* Submit & Guarantee */}
-            <div className="pt-4 border-t border-white/10 space-y-3">
+            <div className="pt-3 border-t border-white/10 space-y-3">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-4 bg-white text-black font-mono-clean text-xs uppercase tracking-widest font-bold hover:bg-[#E8E8E4] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-4 bg-white text-black font-mono-clean text-xs uppercase tracking-widest font-extrabold hover:bg-white/90 transition-colors flex items-center justify-center gap-2 rounded-xs shadow-xl active:scale-98"
               >
                 {isSubmitting ? (
                   <>
@@ -424,8 +465,8 @@ export function CheckoutModal() {
                 ) : (
                   <span>
                     {formData.paymentMethod === "Razorpay"
-                      ? `PAY VIA RAZORPAY — ₹${cartTotal.toLocaleString()}`
-                      : `CONFIRM CASH ON DELIVERY — ₹${cartTotal.toLocaleString()}`}
+                      ? `PAY VIA RAZORPAY — ₹${cartTotal.toLocaleString("en-IN")}`
+                      : `CONFIRM CASH ON DELIVERY — ₹${cartTotal.toLocaleString("en-IN")}`}
                   </span>
                 )}
               </button>

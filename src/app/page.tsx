@@ -2,21 +2,25 @@
 
 import React, { useState } from "react";
 import { Navigation } from "@/components/Navigation";
-import { Hero3D } from "@/components/Hero3D";
+import { HeroCampaign } from "@/components/HeroCampaign";
+import { CategoryShowcase } from "@/components/CategoryShowcase";
+import { CollectionGallery } from "@/components/CollectionGallery";
 import { BrandVideoSection } from "@/components/BrandVideoSection";
 import { NeckLogoReveal } from "@/components/NeckLogoReveal";
 import { PersonalizationReveal } from "@/components/PersonalizationReveal";
-import { CollectionGallery } from "@/components/CollectionGallery";
-import { ProductDetailModal } from "@/components/ProductDetailModal";
-import { EditorialCampaign } from "@/components/EditorialCampaign";
 import { MaterialShowcase } from "@/components/MaterialShowcase";
+import { EditorialCampaign } from "@/components/EditorialCampaign";
 import { StudioAbout } from "@/components/StudioAbout";
 import { Footer } from "@/components/Footer";
+import { ProductDetailModal } from "@/components/ProductDetailModal";
 import { SearchModal } from "@/components/SearchModal";
 import { MenuDrawer } from "@/components/MenuDrawer";
 import { CartDrawer } from "@/components/CartDrawer";
+import { WishlistDrawer } from "@/components/WishlistDrawer";
+import { OrderTrackingModal } from "@/components/OrderTrackingModal";
 import { CheckoutModal } from "@/components/CheckoutModal";
-import { AuthModal } from "@/components/AuthModal";
+import { CustomerDashboardModal } from "@/components/CustomerDashboardModal";
+import { FbfyLoader } from "@/components/FbfyLoader";
 import { Product, CameraPreset } from "@/types";
 import { PRODUCTS } from "@/data/products";
 import { useCartAuth } from "@/context/CartAuthContext";
@@ -52,48 +56,56 @@ export default function Home() {
 
   return (
     <main className="relative bg-[#08080a] text-[#f4f4f2] min-h-screen">
-      {/* Persistent Navigation */}
+      {/* 00: Shining FBFY Brand Entrance Loading Screen */}
+      <FbfyLoader duration={1600} />
+
+      {/* 01: Persistent Navigation with Mega-Menu & Announcement Bar */}
       <Navigation
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenMenu={() => setIsMenuOpen(true)}
       />
 
-      {/* 01: Hero 3D Garment Experience */}
-      <Hero3D
-        activePreset={activeHeroPreset}
-        onPresetChange={handleHeroPresetChange}
+      {/* 02: Flagship Editorial Campaign Hero & Interactive 3D Studio */}
+      <HeroCampaign
+        activeHeroPreset={activeHeroPreset}
+        onHeroPresetChange={handleHeroPresetChange}
         onOpenProductDetail={() => setSelectedProduct(currentProducts[0])}
       />
 
-      {/* 02: Cinematic Brand Video Section */}
-      <BrandVideoSection />
+      {/* 03: Visual Shop by Category (Inspired by Reference Screenshot) */}
+      <CategoryShowcase />
 
-      {/* 03: Signature Neck Branding Reveal */}
-      <NeckLogoReveal
-        onFocusHeroPreset={(preset) => handleHeroPresetChange(preset)}
-      />
-
-      {/* 04: Bottom-Corner Personalization Reveal */}
-      <PersonalizationReveal
-        onFocusHeroPreset={(preset) => handleHeroPresetChange(preset)}
-      />
-
-      {/* 05: 3D Product Collection Gallery */}
+      {/* 04: Curated Collection Gallery with Badges, Ratings, Filters & Quick-Add */}
       <CollectionGallery
         products={currentProducts}
         onSelectProduct={(product) => setSelectedProduct(product)}
       />
 
-      {/* 06: Material & Tactile Construction Showcase */}
+      {/* 05: Cinematic Brand Video Section */}
+      <BrandVideoSection />
+
+      {/* 06: Signature Neck Branding Reveal */}
+      <NeckLogoReveal
+        onFocusHeroPreset={(preset) => handleHeroPresetChange(preset)}
+      />
+
+      {/* 07: Bottom-Corner Laser Personalization Reveal */}
+      <PersonalizationReveal
+        onFocusHeroPreset={(preset) => handleHeroPresetChange(preset)}
+      />
+
+      {/* 08: Material & Tactile Construction Showcase */}
       <MaterialShowcase />
 
-      {/* 07: Cinematic Fashion Editorial Campaign */}
-      <EditorialCampaign />
+      {/* 09: Cinematic Fashion Editorial Campaign / Lookbook */}
+      <div id="lookbook">
+        <EditorialCampaign />
+      </div>
 
-      {/* 08: Studio & Architectural Proportions */}
+      {/* 10: Studio & Architectural Proportions */}
       <StudioAbout />
 
-      {/* 09: Minimal Dark Footer */}
+      {/* 11: Minimal Dark Footer with Legal & Tracking */}
       <Footer />
 
       {/* Modals & Drawers */}
@@ -117,10 +129,14 @@ export default function Home() {
         onSelectPreset={(preset) => handleHeroPresetChange(preset)}
       />
 
-      {/* E-Commerce & Account Modals */}
+      {/* E-Commerce Drawers & Modals */}
       <CartDrawer />
+      <WishlistDrawer
+        onSelectProduct={(product) => setSelectedProduct(product)}
+      />
+      <OrderTrackingModal />
       <CheckoutModal />
-      <AuthModal />
+      <CustomerDashboardModal />
     </main>
   );
 }

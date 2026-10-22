@@ -6,13 +6,13 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api/"],
+        disallow: ["/2244", "/api/"],
       },
       // Give full access to AI Search Crawlers (AEO for GPTBot, Perplexity, Claude, Applebot)
       {
         userAgent: ["GPTBot", "ChatGPT-User", "PerplexityBot", "ClaudeBot", "Applebot"],
         allow: "/",
-        disallow: ["/admin"],
+        disallow: ["/2244"],
       },
     ],
     sitemap: "https://www.fbfy.in/sitemap.xml",

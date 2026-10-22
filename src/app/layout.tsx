@@ -1,20 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Syne, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { CartAuthProvider } from "@/context/CartAuthContext";
 import { StructuredData } from "@/components/StructuredData";
 
-const syne = Syne({
-  variable: "--font-syne",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-brand",
   subsets: ["latin"],
-  weight: ["500", "700", "800"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -99,11 +99,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${syne.variable} ${inter.variable} dark`}>
+    <html lang="en" className={`${spaceGrotesk.variable} ${plusJakartaSans.variable} dark`}>
       <head>
         <StructuredData />
       </head>
-      <body className="bg-[#08080A] text-[#F4F4F2] min-h-screen selection:bg-white selection:text-black">
+      <body className="bg-[#08080A] text-[#F4F4F2] min-h-screen selection:bg-white selection:text-black font-sans antialiased">
         <CartAuthProvider>{children}</CartAuthProvider>
       </body>
     </html>

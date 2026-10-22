@@ -17,6 +17,13 @@ import {
   Layers,
   Sparkles,
   Maximize2,
+  Truck,
+  ShieldCheck,
+  Ruler,
+  Star,
+  Flame,
+  ArrowRight,
+  Zap,
 } from "lucide-react";
 
 interface ProductDetailModalProps {
@@ -34,11 +41,19 @@ export function ProductDetailModal({
   onSelectProduct,
   allProducts,
 }: ProductDetailModalProps) {
-  const { customName, setCustomName, addToCart } = useCartAuth();
+  const { customName, setCustomName, addToCart, setIsCheckoutOpen } = useCartAuth();
   const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(null);
   const [selectedSize, setSelectedSize] = useState<(typeof SIZES)[number]>("L");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [addedAnimation, setAddedAnimation] = useState(false);
+
+  // Delivery Pincode state
+  const [pincode, setPincode] = useState("");
+  const [pincodeResult, setPincodeResult] = useState<string | null>(null);
+  const [isCheckingPincode, setIsCheckingPincode] = useState(false);
+
+  // Size Chart modal state
+  const [isSizeChartOpen, setIsSizeChartOpen] = useState(false);
 
   // 3D View & Interaction states
   const [viewMode, setViewMode] = useState<"3d" | "zoom" | "turntable">("3d");
@@ -59,9 +74,10 @@ export function ProductDetailModal({
     setActiveImageIndex(0);
     setRotation({ x: 0, y: 0 });
     setSelectedColor(null);
+    setPincodeResult(null);
   }, [product?.id]);
 
-  // Handle keyboard navigation (Left/Right arrows for Amazon/Netflix slider)
+  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -94,7 +110,7 @@ export function ProductDetailModal({
     };
   }, [viewMode, isTurntablePlaying]);
 
-  // Build the complete array of images (Amazon / Netflix style one-by-one gallery)
+  // Build the complete array of images
   const galleryImages: { id: string; label: string; url: string; isMacro?: boolean }[] = [];
   if (product) {
     if (product.images && product.images.length > 0) {
@@ -106,7 +122,6 @@ export function ProductDetailModal({
       );
     }
 
-    // Ensure editorial / macro views are also available
     if (!galleryImages.some((img) => img.id === "neck_macro")) {
       galleryImages.push({
         id: "neck_macro",
@@ -213,7 +228,6 @@ export function ProductDetailModal({
     if (e.changedTouches.length === 1) {
       const swipeDistanceX = e.changedTouches[0].clientX - touchStartPos.current.x;
       const swipeDistanceY = e.changedTouches[0].clientY - touchStartPos.current.y;
-      // If horizontal swipe is dominant and significant
       if (Math.abs(swipeDistanceX) > 60 && Math.abs(swipeDistanceY) < 50) {
         if (swipeDistanceX < 0) {
           handleNextImage();
@@ -242,12 +256,36 @@ export function ProductDetailModal({
     }, 450);
   };
 
-  // Safe check before rendering JSX (All hooks are already guaranteed to have run at top level)
+  const handleBuyNow = () => {
+    if (!product || !currentColor) return;
+    addToCart(product, currentColor, selectedSize, customName);
+    onClose();
+    setIsCheckoutOpen(true);
+  };
+
+  // Indian Pincode check
+  const handleCheckPincode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(pincode.trim())) {
+      setPincodeResult("Please enter a valid 6-digit Indian PIN code.");
+      return;
+    }
+    setIsCheckingPincode(true);
+    setTimeout(() => {
+      setIsCheckingPincode(false);
+      setPincodeResult("Express Delivery Available: Delivery by Oct 25-27 via BlueDart Express (Free Shipping).");
+    }, 600);
+  };
+
   if (!product || !currentColor || !currentImage) return null;
+
+  const discountPercent = product.originalPrice
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-0 sm:p-4 md:p-6 overflow-y-auto">
-      <div className="relative w-full min-h-screen sm:min-h-0 sm:max-w-7xl bg-[#0a0a0d] border-0 sm:border sm:border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden my-auto flex flex-col pb-16 lg:pb-0">
+      <div className="relative w-full min-h-screen sm:min-h-0 sm:max-w-7xl bg-[#0a0a0d] border-0 sm:border sm:border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden my-auto flex flex-col pb-24 lg:pb-0">
         {/* Top Minimal Nav Bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#0e0e13]">
           <div className="flex items-center gap-3">
@@ -290,9 +328,9 @@ export function ProductDetailModal({
 
         {/* Content Body Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[620px]">
-          {/* Left Column: Amazon/Netflix Style Multi-Image Gallery & 3D Interactive Stage */}
+          {/* Left Column: Multi-Image Gallery & 3D Interactive Stage */}
           <div className="lg:col-span-8 relative bg-[#060608] border-b lg:border-b-0 lg:border-r border-white/10 flex flex-col md:flex-row items-stretch p-4 sm:p-6 gap-4">
-            {/* Amazon Style Vertical Thumbnail Rail (Horizontal on Mobile) */}
+            {/* Vertical Thumbnail Rail */}
             <div className="flex flex-row md:flex-col gap-2.5 overflow-x-auto md:overflow-y-auto max-h-[580px] scrollbar-thin scrollbar-thumb-white/20 pb-2 md:pb-0 shrink-0 z-20">
               <span className="hidden md:block font-mono-clean text-[9px] text-[#6E6E73] tracking-[0.2em] uppercase mb-1">
                 VIEWS ({galleryImages.length})
@@ -307,7 +345,6 @@ export function ProductDetailModal({
                       setRotation({ x: 0, y: 0 });
                     }}
                     onMouseEnter={() => {
-                      // Netflix/Amazon quick preview on hover
                       setActiveImageIndex(idx);
                     }}
                     className={`relative w-16 h-20 sm:w-20 sm:h-24 md:w-20 md:h-24 shrink-0 overflow-hidden border transition-all text-left group bg-[#0e0e12] ${
@@ -396,7 +433,7 @@ export function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Prev / Next Slide Arrows on Left and Right (Netflix/Amazon Style) */}
+              {/* Prev / Next Slide Arrows */}
               <button
                 onClick={handlePrevImage}
                 aria-label="Previous Image"
@@ -441,9 +478,7 @@ export function ProductDetailModal({
                     transformStyle: "preserve-3d",
                   }}
                 >
-                  {/* Outer Framed Garment */}
                   <div className="relative w-full h-full overflow-hidden bg-[#070709] border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.95)]">
-                    {/* Normal/3D Mode Image Render */}
                     <Image
                       src={currentImage.url}
                       alt={currentImage.label}
@@ -456,7 +491,7 @@ export function ProductDetailModal({
                       priority
                     />
 
-                    {/* HD Loupe Zoom Mode Lens (Amazon Style Magnifier) */}
+                    {/* HD Loupe Zoom Mode Lens */}
                     {viewMode === "zoom" && (
                       <div
                         className="absolute inset-0 pointer-events-none"
@@ -469,7 +504,7 @@ export function ProductDetailModal({
                       />
                     )}
 
-                    {/* Specular 3D Glare Lighting that shifts with tilt */}
+                    {/* Specular 3D Glare */}
                     {viewMode === "3d" && (
                       <div
                         className="absolute inset-0 pointer-events-none transition-opacity duration-300"
@@ -483,7 +518,7 @@ export function ProductDetailModal({
                       />
                     )}
 
-                    {/* Dynamic Personalized Hem Signature Overlay in 3D Perspective */}
+                    {/* Dynamic Personalized Hem Signature */}
                     {!currentImage.isMacro && (
                       <div
                         className="absolute bottom-5 right-5 z-20 pointer-events-none font-mono-clean text-right"
@@ -504,7 +539,7 @@ export function ProductDetailModal({
                     </div>
                   </div>
 
-                  {/* Soft Realistic Contact Shadow on Floor */}
+                  {/* Soft Realistic Contact Shadow */}
                   <div
                     className="absolute -bottom-6 w-4/5 h-6 bg-black/90 rounded-full blur-xl pointer-events-none"
                     style={{
@@ -519,36 +554,59 @@ export function ProductDetailModal({
               {/* Bottom Interactive Prompt */}
               <div className="w-full flex items-center justify-between pt-2 px-2 border-t border-white/5 font-mono-clean text-[10px] text-[#6E6E73]">
                 <span>DRAG TO ROTATE IN 3D • MOUSE TILT ACTIVE</span>
-                <span className="text-emerald-400">fbfy 280 GSM HEAVYWEIGHT COTTON</span>
+                <span className="text-emerald-400">fbfy {product.gsm} GSM HEAVYWEIGHT COTTON</span>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Customization & Complete Checkout Action */}
-          <div className="lg:col-span-4 p-5 sm:p-8 flex flex-col justify-between bg-[#0b0b0f]">
+          {/* Right Column: Customization, Pincode & Order Actions */}
+          <div className="lg:col-span-4 p-5 sm:p-7 flex flex-col justify-between bg-[#0b0b0f] overflow-y-auto max-h-[85vh]">
             <div>
+              {/* Category, Rating & Price Header */}
               <div className="flex items-start justify-between gap-2 mb-2">
-                <span className="font-mono-clean text-[10px] tracking-[0.3em] text-[#8E8E93] uppercase">
-                  {product.collection} COLLECTION
+                <span className="font-mono-clean text-[10px] tracking-[0.25em] text-[#8E8E93] uppercase">
+                  {product.category || product.collection}
                 </span>
-                <span className="font-mono-clean text-lg font-bold text-white">
-                  ₹{product.price.toLocaleString()}
-                </span>
+                <div className="flex items-center gap-1 text-amber-400 text-xs font-mono-clean">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  <span className="font-bold">{product.rating}</span>
+                  <span className="text-white/40">({product.reviewCount} reviews)</span>
+                </div>
               </div>
 
-              <h2 className="font-brand text-xl sm:text-2xl text-white font-extrabold tracking-tight mb-4">
+              <h2 className="font-brand text-xl sm:text-2xl text-white font-extrabold tracking-tight mb-2">
                 {product.name}
               </h2>
 
+              {/* Price & Savings Display */}
+              <div className="flex items-baseline gap-3 mb-4 pb-3 border-b border-white/10">
+                <span className="font-brand text-2xl font-extrabold text-white">
+                  ₹{product.price.toLocaleString("en-IN")}
+                </span>
+                {product.originalPrice && (
+                  <>
+                    <span className="font-mono-clean text-xs text-white/40 line-through">
+                      ₹{product.originalPrice.toLocaleString("en-IN")}
+                    </span>
+                    <span className="font-mono-clean text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-xs">
+                      SAVE {discountPercent}%
+                    </span>
+                  </>
+                )}
+                <span className="ml-auto text-[10px] font-mono-clean text-[#8E8E93]">
+                  Inclusive of all taxes
+                </span>
+              </div>
+
               {/* Personalization Name Input Field */}
-              <div className="mb-5 p-3.5 bg-[#121218] border border-white/15">
-                <div className="flex items-center justify-between mb-2">
+              <div className="mb-4 p-3 bg-[#121218] border border-white/15 rounded-xs">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="font-mono-clean text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3 h-3 text-emerald-400" />
-                    <span>LOWER HEM CUSTOM ENGRAVING:</span>
+                    <span>LOWER HEM CUSTOM SIGNATURE:</span>
                   </label>
                   <span className="font-mono-clean text-[9px] text-white/50">
-                    REAL-TIME 3D PREVIEW
+                    LIVE PREVIEW
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -560,18 +618,14 @@ export function ProductDetailModal({
                     maxLength={14}
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value.toUpperCase())}
-                    placeholder="ENTER YOUR NAME"
+                    placeholder="YOUR NAME"
                     className="w-full px-3 py-1.5 bg-black border border-white/20 text-white font-mono-clean text-xs font-bold tracking-widest uppercase focus:border-white focus:outline-none"
                   />
                 </div>
-                <span className="font-mono-clean text-[9px] text-[#8E8E93] block mt-1.5">
-                  Laser applied to lower right hem:{" "}
-                  <strong className="text-white">fbfy by {customName || "YOU"}</strong>
-                </span>
               </div>
 
               {/* Colorways */}
-              <div className="mb-5">
+              <div className="mb-4">
                 <div className="flex justify-between items-center mb-2 font-mono-clean text-xs">
                   <span className="text-[#6E6E73] uppercase tracking-wider">COLORWAY</span>
                   <span className="text-white font-medium">{currentColor.name}</span>
@@ -594,21 +648,26 @@ export function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Sizes */}
-              <div className="mb-5">
+              {/* Sizes with Size Chart Trigger & Live Stock Alert */}
+              <div className="mb-4">
                 <div className="flex justify-between items-center mb-2 font-mono-clean text-xs">
                   <span className="text-[#6E6E73] uppercase tracking-wider">SIZE / FIT</span>
-                  <span className="text-white font-medium">SIZE {selectedSize} (OVERSIZED)</span>
+                  <button
+                    onClick={() => setIsSizeChartOpen(true)}
+                    className="text-white hover:text-emerald-400 font-medium underline flex items-center gap-1 text-[11px]"
+                  >
+                    <Ruler className="w-3 h-3" /> Size Guide
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5 mb-2">
                   {SIZES.map((sz) => (
                     <button
                       key={sz}
                       onClick={() => setSelectedSize(sz)}
                       className={`py-2 text-xs font-mono-clean uppercase tracking-wider border text-center transition-all ${
                         selectedSize === sz
-                          ? "bg-white text-black font-bold border-white"
+                          ? "bg-white text-black font-extrabold border-white"
                           : "bg-[#141418] text-[#8E8E93] border-white/10 hover:border-white/30 hover:text-white"
                       }`}
                     >
@@ -616,10 +675,48 @@ export function ProductDetailModal({
                     </button>
                   ))}
                 </div>
+
+                {/* Stock Urgency */}
+                <div className="flex items-center gap-1.5 text-[10px] font-mono-clean text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2 rounded-xs">
+                  <Flame className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>
+                    High Demand: Only <strong className="text-white">{product.stock || 4} units</strong> left in {selectedSize}
+                  </span>
+                </div>
               </div>
 
-              {/* Technical Specifications */}
-              <div className="space-y-1.5 font-mono-clean text-[11px] text-[#A1A1A6] mb-5 border-t border-b border-white/10 py-3">
+              {/* Delivery PIN Code Check */}
+              <div className="mb-4 p-3 bg-[#121217] border border-white/10 rounded-xs">
+                <span className="text-[10px] font-mono-clean uppercase tracking-wider text-[#8E8E93] block mb-1.5 flex items-center gap-1">
+                  <Truck className="w-3 h-3 text-emerald-400" />
+                  Estimate Delivery & Availability
+                </span>
+                <form onSubmit={handleCheckPincode} className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={pincode}
+                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Enter 6-digit Pincode"
+                    className="flex-1 bg-black border border-white/15 px-3 py-1.5 text-xs font-mono-clean text-white focus:outline-none focus:border-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isCheckingPincode}
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white hover:text-black text-white font-mono-clean text-[11px] uppercase tracking-wider font-bold transition-colors"
+                  >
+                    {isCheckingPincode ? "Checking..." : "Check"}
+                  </button>
+                </form>
+                {pincodeResult && (
+                  <p className="text-[10px] font-mono-clean text-emerald-400 mt-2">
+                    {pincodeResult}
+                  </p>
+                )}
+              </div>
+
+              {/* Product Specifications */}
+              <div className="space-y-1.5 font-mono-clean text-[11px] text-[#A1A1A6] mb-4 border-t border-b border-white/10 py-3">
                 <div className="flex justify-between">
                   <span className="text-[#6E6E73]">FIT PROFILE</span>
                   <span className="text-white">{product.fit}</span>
@@ -629,39 +726,123 @@ export function ProductDetailModal({
                   <span className="text-white">{product.fabric}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6E6E73]">CALIBRATED GSM</span>
+                  <span className="text-[#6E6E73]">CALIBRATED WEIGHT</span>
                   <span className="text-white font-bold">{product.gsm} GSM</span>
                 </div>
               </div>
             </div>
 
-            {/* Add to Bag Action */}
-            <div className="pt-4 border-t border-white/10">
-              <button
-                onClick={handleOrder}
-                className="w-full py-4 bg-white text-black font-mono-clean text-xs uppercase tracking-widest font-bold hover:bg-[#E8E8E4] transition-colors flex items-center justify-center gap-2 shadow-2xl active:scale-[0.99]"
-              >
-                {addedAnimation ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    <span>ADDED TO BAG!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>ADD TO BAG — ₹{product.price.toLocaleString()}</span>
-                  </>
-                )}
-              </button>
+            {/* Double Action: Add to Bag & Buy Now */}
+            <div className="pt-3 border-t border-white/10 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleOrder}
+                  className="w-full py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-mono-clean text-xs uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  {addedAnimation ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>ADDED!</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>ADD TO BAG</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleBuyNow}
+                  className="w-full py-3.5 bg-white text-black hover:bg-white/90 font-mono-clean text-xs uppercase tracking-wider font-extrabold transition-all flex items-center justify-center gap-2 shadow-xl"
+                >
+                  <Zap className="w-4 h-4 fill-black" />
+                  <span>BUY NOW</span>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] font-mono-clean text-white/50 pt-1">
+                <span>✓ 7-Day Hassle-Free Returns</span>
+                <span>✓ 100% Genuine Studio Garment</span>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Size Chart Modal Overlay */}
+        {isSizeChartOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="relative w-full max-w-lg bg-[#0e0e14] border border-white/15 p-6 rounded-sm text-white shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+                <div className="flex items-center gap-2">
+                  <Ruler className="w-4 h-4 text-emerald-400" />
+                  <h3 className="font-brand text-base font-bold">
+                    ARCHITECTURAL SIZE GUIDE (INCHES)
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsSizeChartOpen(false)}
+                  className="p-1 text-white/60 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <table className="w-full text-left font-mono-clean text-xs border border-white/10">
+                <thead className="bg-[#16161f] text-[#8E8E93]">
+                  <tr>
+                    <th className="p-2.5 border-b border-white/10">SIZE</th>
+                    <th className="p-2.5 border-b border-white/10">CHEST</th>
+                    <th className="p-2.5 border-b border-white/10">LENGTH</th>
+                    <th className="p-2.5 border-b border-white/10">SHOULDER</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  <tr>
+                    <td className="p-2.5 font-bold">S</td>
+                    <td className="p-2.5">42"</td>
+                    <td className="p-2.5">28"</td>
+                    <td className="p-2.5">21"</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold">M</td>
+                    <td className="p-2.5">44"</td>
+                    <td className="p-2.5">29"</td>
+                    <td className="p-2.5">22"</td>
+                  </tr>
+                  <tr className="bg-emerald-500/10 text-emerald-300">
+                    <td className="p-2.5 font-bold">L (Default)</td>
+                    <td className="p-2.5">46"</td>
+                    <td className="p-2.5">30"</td>
+                    <td className="p-2.5">23"</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold">XL</td>
+                    <td className="p-2.5">48"</td>
+                    <td className="p-2.5">31"</td>
+                    <td className="p-2.5">24"</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold">XXL</td>
+                    <td className="p-2.5">50"</td>
+                    <td className="p-2.5">32"</td>
+                    <td className="p-2.5">25"</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <p className="text-[11px] font-mono-clean text-[#8E8E93] mt-4">
+                Note: FBFY garments feature an intentional dropped-shoulder architectural oversized drape. Order your normal size for the intended boxy aesthetic.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Netflix Style "MORE FROM FBFY" Horizontal Sliding Reel */}
         <div className="border-t border-white/10 bg-[#08080a] p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="font-mono-clean text-[10px] tracking-[0.25em] text-[#8E8E93] uppercase">
-              NETFLIX REEL // EXPLORE ALL FBFY PIECES
+              STUDIO ARCHIVE // EXPLORE ALL PIECES
             </span>
             <span className="font-mono-clean text-[10px] text-white/40">
               CLICK TO SWITCH DESIGN
@@ -694,46 +875,17 @@ export function ProductDetailModal({
                     <div className="font-brand text-xs font-bold text-white truncate max-w-[140px]">
                       {p.name}
                     </div>
-                    <div className="font-mono-clean text-[10px] text-emerald-400">
+                    <div className="font-mono-clean text-[10px] text-emerald-400 font-bold">
                       ₹{p.price.toLocaleString()}
                     </div>
                     <div className="font-mono-clean text-[9px] text-[#6E6E73]">
-                      {p.images?.length || 2} VIEWS
+                      {p.gsm} GSM • {p.category}
                     </div>
                   </div>
                 </button>
               );
             })}
           </div>
-        </div>
-
-        {/* Mobile-Only Sticky Bottom Action Bar */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-[#0c0c10]/95 backdrop-blur-xl border-t border-white/15 z-50 flex items-center justify-between gap-3 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
-          <div className="flex flex-col">
-            <span className="font-mono-clean text-[9px] text-[#8E8E93] uppercase">
-              {currentColor.name} • SIZE {selectedSize}
-            </span>
-            <span className="font-mono-clean text-xs font-bold text-white">
-              ₹{product.price.toLocaleString()}
-            </span>
-          </div>
-
-          <button
-            onClick={handleOrder}
-            className="flex-1 py-3 px-4 bg-white text-black font-mono-clean text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 shadow-xl active:scale-95"
-          >
-            {addedAnimation ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-600" />
-                <span>ADDED!</span>
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="w-4 h-4" />
-                <span>ADD TO BAG</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>

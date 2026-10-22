@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { CartItem, Product, ColorVariant } from "@/types";
+import { CartItem, Product, ColorVariant, StoreSettings, Order } from "@/types";
 import { auth, db } from "@/lib/firebase";
 import {
   User,
@@ -20,6 +20,35 @@ import {
 } from "firebase/firestore";
 import { PRODUCTS } from "@/data/products";
 
+export interface AppliedCoupon {
+  code: string;
+  type: "PERCENT" | "FIXED";
+  value: number;
+  minSpend?: number;
+}
+
+export const VALID_COUPONS: Record<string, AppliedCoupon> = {
+  WELCOME10: { code: "WELCOME10", type: "PERCENT", value: 10 },
+  FBFY500: { code: "FBFY500", type: "FIXED", value: 500, minSpend: 3000 },
+  STREET20: { code: "STREET20", type: "PERCENT", value: 20, minSpend: 4000 },
+  FIRSTDROP: { code: "FIRSTDROP", type: "PERCENT", value: 15 },
+};
+
+const DEFAULT_STORE_SETTINGS: StoreSettings = {
+  announcementText: "FREE EXPRESS SHIPPING ON ALL ORDERS OVER ₹1,999 • USE CODE: WELCOME10 FOR 10% OFF • DROP 04 ARCHIVE LIVE",
+  announcementActive: true,
+  announcementLinkText: "SHOP THE DROP",
+  announcementLinkUrl: "#collection",
+  heroHeadline: "BUILT TO DEFY THE ORDINARY",
+  heroSubtitle: "Heavyweight 280-400 GSM Architectural Silhouettes with Bespoke Laser-Engraved Personalization",
+  heroCtaText: "EXPLORE DROP 04",
+  heroCtaLink: "#collection",
+  heroBadgeText: "STREETWEAR ARCHIVE // 2026",
+  freeShippingThreshold: 1999,
+  codFee: 99,
+  maintenanceMode: false,
+};
+
 interface CartAuthContextType {
   // Cart
   cartItems: CartItem[];
@@ -34,6 +63,9 @@ interface CartAuthContextType {
   updateQuantity: (itemId: string, delta: number) => void;
   clearCart: () => void;
   cartCount: number;
+  cartSubtotal: number;
+  cartDiscount: number;
+  cartShippingFee: number;
   cartTotal: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -41,8 +73,26 @@ interface CartAuthContextType {
   setIsCheckoutOpen: (open: boolean) => void;
   isAuthOpen: boolean;
   setIsAuthOpen: (open: boolean) => void;
+  isTrackOrderOpen: boolean;
+  setIsTrackOrderOpen: (open: boolean) => void;
+  isWishlistOpen: boolean;
+  setIsWishlistOpen: (open: boolean) => void;
   customName: string;
   setCustomName: (name: string) => void;
+
+  // Coupon
+  appliedCoupon: AppliedCoupon | null;
+  applyCoupon: (code: string) => { success: boolean; message: string };
+  removeCoupon: () => void;
+
+  // Wishlist
+  wishlist: string[];
+  toggleWishlist: (productId: string) => void;
+  isWishlisted: (productId: string) => boolean;
+
+  // Navigation & Category Filter
+  activeCategoryFilter: string;
+  setActiveCategoryFilter: (category: string) => void;
 
   // Auth
   user: User | null;
@@ -57,6 +107,10 @@ interface CartAuthContextType {
   editProduct: (product: Product) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   seedProductsToFirestore: () => Promise<void>;
+
+  // Store Settings (CMS)
+  storeSettings: StoreSettings;
+  updateStoreSettings: (newSettings: Partial<StoreSettings>) => Promise<void>;
 }
 
 const CartAuthContext = createContext<CartAuthContextType | undefined>(undefined);
@@ -66,17 +120,31 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isTrackOrderOpen, setIsTrackOrderOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [customName, setCustomName] = useState("YOU");
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Products state - initialized with static PRODUCTS and synced live with Firestore
+  // Wishlist
+  const [wishlist, setWishlist] = useState<string[]>([]);
+
+  // Coupon
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+
+  // Active Category Filter (driven by Mega-Menu)
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>("ALL");
+
+  // Products state
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
 
-  // Load products from Firestore
+  // Store CMS Settings
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
+
+  // Load products & settings from Firestore
   useEffect(() => {
     try {
-      const unsubscribe = onSnapshot(
+      const unsubscribeProducts = onSnapshot(
         collection(db, "products"),
         (snapshot) => {
           if (!snapshot.empty) {
@@ -84,7 +152,6 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
             snapshot.forEach((d) => {
               list.push({ id: d.id, ...d.data() } as Product);
             });
-            // Keep deterministic order
             setProducts(list);
           }
         },
@@ -92,11 +159,37 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
           console.error("Firestore products sync error:", error);
         }
       );
-      return () => unsubscribe();
+
+      const unsubscribeSettings = onSnapshot(
+        doc(db, "settings", "global"),
+        (snap) => {
+          if (snap.exists()) {
+            setStoreSettings((prev) => ({ ...prev, ...(snap.data() as StoreSettings) }));
+          }
+        },
+        (error) => {
+          console.error("Firestore settings sync error:", error);
+        }
+      );
+
+      return () => {
+        unsubscribeProducts();
+        unsubscribeSettings();
+      };
     } catch (err) {
-      console.error("Firestore products init error:", err);
+      console.error("Firestore init error:", err);
     }
   }, []);
+
+  const updateStoreSettings = async (newSettings: Partial<StoreSettings>) => {
+    try {
+      const merged = { ...storeSettings, ...newSettings };
+      setStoreSettings(merged);
+      await setDoc(doc(db, "settings", "global"), merged, { merge: true });
+    } catch (err) {
+      console.error("Update settings error:", err);
+    }
+  };
 
   // Add Product to Firestore
   const addProduct = async (productData: Product) => {
@@ -107,7 +200,6 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
       setProducts((prev) => [productWithId, ...prev.filter((p) => p.id !== id)]);
     } catch (err) {
       console.error("Add product error:", err);
-      // Fallback local update
       setProducts((prev) => [productData, ...prev]);
     }
   };
@@ -121,7 +213,6 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (err) {
       console.error("Edit product error:", err);
-      // Fallback local update
       setProducts((prev) =>
         prev.map((p) => (p.id === productData.id ? productData : p))
       );
@@ -153,17 +244,17 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Load cart from localStorage
+  // Load cart and wishlist from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("fbfy_cart");
-      if (saved) {
-        setCartItems(JSON.parse(saved));
-      }
+      const savedCart = localStorage.getItem("fbfy_cart");
+      if (savedCart) setCartItems(JSON.parse(savedCart));
+
       const savedName = localStorage.getItem("fbfy_name");
-      if (savedName) {
-        setCustomName(savedName);
-      }
+      if (savedName) setCustomName(savedName);
+
+      const savedWishlist = localStorage.getItem("fbfy_wishlist");
+      if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
     } catch (e) {
       console.error(e);
     }
@@ -177,6 +268,15 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
       console.error(e);
     }
   }, [cartItems]);
+
+  // Save wishlist to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("fbfy_wishlist", JSON.stringify(wishlist));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [wishlist]);
 
   useEffect(() => {
     try {
@@ -252,13 +352,60 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setCartItems([]);
+    setAppliedCoupon(null);
   };
 
+  // Wishlist toggle
+  const toggleWishlist = (productId: string) => {
+    setWishlist((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const isWishlisted = (productId: string) => wishlist.includes(productId);
+
+  // Coupon handlers
+  const applyCoupon = (rawCode: string) => {
+    const code = rawCode.trim().toUpperCase();
+    const coupon = VALID_COUPONS[code];
+    if (!coupon) {
+      return { success: false, message: `Invalid promo code "${code}". Try WELCOME10 or FBFY500.` };
+    }
+    if (coupon.minSpend && cartSubtotal < coupon.minSpend) {
+      return {
+        success: false,
+        message: `Code "${code}" requires minimum order value of ₹${coupon.minSpend}.`,
+      };
+    }
+    setAppliedCoupon(coupon);
+    return { success: true, message: `Promo code "${code}" applied successfully!` };
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+  };
+
+  // Calculations
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  const cartTotal = cartItems.reduce(
+  const cartSubtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
   );
+
+  let cartDiscount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.type === "PERCENT") {
+      cartDiscount = Math.round((cartSubtotal * appliedCoupon.value) / 100);
+    } else if (appliedCoupon.type === "FIXED") {
+      cartDiscount = Math.min(appliedCoupon.value, cartSubtotal);
+    }
+  }
+
+  // Free shipping logic
+  const cartShippingFee =
+    cartSubtotal > 0 && cartSubtotal < storeSettings.freeShippingThreshold ? 149 : 0;
+
+  const cartTotal = Math.max(0, cartSubtotal - cartDiscount + cartShippingFee);
 
   const signIn = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -283,6 +430,9 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
         updateQuantity,
         clearCart,
         cartCount,
+        cartSubtotal,
+        cartDiscount,
+        cartShippingFee,
         cartTotal,
         isCartOpen,
         setIsCartOpen,
@@ -290,8 +440,20 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
         setIsCheckoutOpen,
         isAuthOpen,
         setIsAuthOpen,
+        isTrackOrderOpen,
+        setIsTrackOrderOpen,
+        isWishlistOpen,
+        setIsWishlistOpen,
         customName,
         setCustomName,
+        appliedCoupon,
+        applyCoupon,
+        removeCoupon,
+        wishlist,
+        toggleWishlist,
+        isWishlisted,
+        activeCategoryFilter,
+        setActiveCategoryFilter,
         user,
         authLoading,
         signIn,
@@ -302,6 +464,8 @@ export function CartAuthProvider({ children }: { children: React.ReactNode }) {
         editProduct,
         deleteProduct,
         seedProductsToFirestore,
+        storeSettings,
+        updateStoreSettings,
       }}
     >
       {children}

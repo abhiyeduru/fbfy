@@ -1,128 +1,201 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
-import { Product } from "@/types";
-import { ArrowUpRight } from "lucide-react";
+import { Product, ColorVariant } from "@/types";
+import { useCartAuth } from "@/context/CartAuthContext";
+import {
+  ArrowUpRight,
+  Heart,
+  Star,
+  Check,
+  Flame,
+} from "lucide-react";
 
 interface ProductCard3DProps {
   product: Product;
   onSelectProduct: (product: Product) => void;
 }
 
+const QUICK_SIZES = ["S", "M", "L", "XL", "XXL"] as const;
+
 export function ProductCard3D({ product, onSelectProduct }: ProductCard3DProps) {
-  const [selectedColor, setSelectedColor] = useState(product.availableColors[0]);
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
-  const [activeImageIdx, setActiveImageIdx] = useState(0);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const { toggleWishlist, isWishlisted, addToCart, customName } = useCartAuth();
+  const [selectedColor, setSelectedColor] = useState<ColorVariant>(
+    product.availableColors[0]
+  );
+  const [isHovered, setIsHovered] = useState(false);
+  const [quickAddedSize, setQuickAddedSize] = useState<string | null>(null);
 
-  const images = product.images && product.images.length > 0
-    ? product.images.slice(0, 4)
-    : [
-        { id: "front", label: "FRONT", url: product.imageFront },
-        { id: "back", label: "BACK", url: product.imageBack },
-      ];
+  // Compute discount percent
+  const discountPercent = product.originalPrice
+    ? Math.round(
+        ((product.originalPrice - product.price) / product.originalPrice) * 100
+      )
+    : 0;
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+  // Hover image switch: front to back/model
+  const primaryImage = product.imageFront;
+  const secondaryImage =
+    product.imageBack || product.editorialImage || product.images?.[1]?.url || primaryImage;
 
-    const rotX = -((y - centerY) / centerY) * 10;
-    const rotY = ((x - centerX) / centerX) * 10;
-
-    setRotateX(rotX);
-    setRotateY(rotY);
+  const handleQuickAdd = (size: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(product, selectedColor, size, customName || "YOU", 1);
+    setQuickAddedSize(size);
+    setTimeout(() => setQuickAddedSize(null), 1500);
   };
 
-  const handleMouseLeave = () => {
-    setRotateX(0);
-    setRotateY(0);
-  };
-
-  // Active view image
-  const displayImage = images[activeImageIdx]?.url || product.imageFront;
+  const wishlisted = isWishlisted(product.id);
 
   return (
     <div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
-        transition: "transform 0.15s ease-out",
-      }}
-      className="group relative flex flex-col bg-[#0e0e11] border border-white/5 hover:border-white/20 transition-all duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative flex flex-col bg-[#0e0e13] border border-white/[0.08] hover:border-white/30 transition-all duration-300 rounded-xs overflow-hidden shadow-lg hover:shadow-2xl"
     >
       {/* Product Image Stage */}
       <div
         onClick={() => onSelectProduct(product)}
-        className="relative w-full aspect-[4/5] bg-[#0c0c0e] overflow-hidden cursor-pointer"
+        className="relative w-full aspect-[4/5] bg-[#09090c] overflow-hidden cursor-pointer"
       >
+        {/* Primary Image */}
         <Image
-          src={displayImage}
+          src={primaryImage}
           alt={product.name}
           fill
-          quality={95}
           unoptimized
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+          className={`object-cover object-center transition-all duration-700 ease-out ${
+            isHovered && secondaryImage ? "opacity-0 scale-105" : "opacity-100 scale-100"
+          }`}
         />
 
-        {/* Minimal Item Code Badge */}
-        <div className="absolute top-3 left-3 z-10 font-mono-clean text-[10px] text-white/50 tracking-widest bg-black/40 backdrop-blur-sm px-2 py-0.5">
-          {product.code}
-        </div>
+        {/* Secondary Flip Image on Hover */}
+        {secondaryImage && (
+          <Image
+            src={secondaryImage}
+            alt={`${product.name} alternate`}
+            fill
+            unoptimized
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            className={`object-cover object-center transition-all duration-700 ease-out absolute inset-0 ${
+              isHovered ? "opacity-100 scale-105" : "opacity-0 scale-100 pointer-events-none"
+            }`}
+          />
+        )}
 
-        {/* GSM Indicator */}
-        <div className="absolute top-3 right-3 z-10 font-mono-clean text-[10px] text-white/70 tracking-widest bg-black/40 backdrop-blur-sm px-2 py-0.5">
-          {product.gsm} GSM
-        </div>
-
-        {/* Amazon/Netflix Style Quick Angle Pill Indicators on Hover */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 backdrop-blur-sm px-2 py-1 border border-white/10">
-          {images.map((img, idx) => (
-            <button
-              key={img.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveImageIdx(idx);
-              }}
-              className={`font-mono-clean text-[8px] uppercase tracking-wider px-1.5 py-0.5 transition-colors ${
-                activeImageIdx === idx
-                  ? "bg-white text-black font-bold"
-                  : "text-[#8E8E93] hover:text-white"
+        {/* Badges: Top Left */}
+        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
+          {product.badge && (
+            <span
+              className={`font-sans text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-xs font-bold backdrop-blur-md shadow-md ${
+                product.badge === "NEW DROP"
+                  ? "bg-emerald-500 text-black font-black"
+                  : product.badge === "BESTSELLER"
+                  ? "bg-amber-400 text-black font-black flex items-center gap-1"
+                  : product.badge === "LIMITED EDITION"
+                  ? "bg-purple-600 text-white font-black"
+                  : "bg-rose-500 text-white font-black"
               }`}
             >
-              {img.label.split(" ")[0]}
-            </button>
-          ))}
+              {product.badge === "BESTSELLER" && <Flame className="w-2.5 h-2.5 inline" />}
+              {product.badge}
+            </span>
+          )}
+
+          {/* GSM Indicator */}
+          <span className="font-sans text-[9px] text-white/80 tracking-widest font-semibold bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded-xs border border-white/10">
+            {product.gsm} GSM
+          </span>
+        </div>
+
+        {/* Wishlist Heart Button: Top Right */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleWishlist(product.id);
+          }}
+          aria-label="Toggle Wishlist"
+          className={`absolute top-2.5 right-2.5 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            wishlisted
+              ? "bg-rose-500 text-white shadow-lg"
+              : "bg-black/50 text-white/70 hover:text-white hover:bg-black/80 backdrop-blur-sm"
+          }`}
+        >
+          <Heart className={`w-4 h-4 ${wishlisted ? "fill-white" : ""}`} />
+        </button>
+
+        {/* Quick-Add Size Pills Bar on Hover */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`absolute bottom-0 left-0 right-0 z-20 bg-black/90 backdrop-blur-md p-2.5 border-t border-white/15 transition-all duration-300 ${
+            isHovered ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
+          }`}
+        >
+          <div className="flex items-center justify-between text-[9px] font-sans uppercase tracking-wider text-white/80 font-bold mb-1.5">
+            <span>Quick Select Size:</span>
+            {quickAddedSize && (
+              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                <Check className="w-3 h-3" /> Size {quickAddedSize} Added
+              </span>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-1">
+            {QUICK_SIZES.map((sz) => (
+              <button
+                key={sz}
+                onClick={(e) => handleQuickAdd(sz, e)}
+                className="flex-1 py-1 text-center font-sans text-[10px] font-bold text-white bg-white/10 hover:bg-white hover:text-black transition-colors rounded-xs border border-white/10"
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Product Info Bar */}
-      <div className="p-5 flex flex-col justify-between flex-grow bg-[#101013]">
-        <div className="mb-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-brand text-sm tracking-wide text-white font-bold">
-              {product.name}
-            </h3>
-            <span className="font-mono-clean text-[11px] text-[#8E8E93]">
-              {product.collection}
-            </span>
+      {/* Product Info Stage */}
+      <div className="p-4 flex flex-col justify-between flex-grow bg-[#101015]">
+        <div>
+          {/* Category & Rating */}
+          <div className="flex items-center justify-between text-[11px] font-sans text-[#8E8E93] mb-1 font-medium">
+            <span>{product.category || product.collection}</span>
+            <div className="flex items-center gap-1 text-amber-400 font-semibold">
+              <Star className="w-3.5 h-3.5 fill-amber-400" />
+              <span>{product.rating}</span>
+              <span className="text-white/40">({product.reviewCount})</span>
+            </div>
           </div>
 
-          <p className="font-mono-clean text-xs text-[#8E8E93]">
-            {product.fit} • {product.fabric}
-          </p>
+          {/* Product Name */}
+          <h3
+            onClick={() => onSelectProduct(product)}
+            className="font-brand text-xs sm:text-sm font-bold text-white tracking-wide hover:text-white/80 cursor-pointer line-clamp-1 mb-1.5"
+          >
+            {product.name}
+          </h3>
+
+          {/* Pricing & Discount */}
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="font-brand text-sm sm:text-base font-bold text-white">
+              ₹{product.price.toLocaleString("en-IN")}
+            </span>
+            {product.originalPrice && (
+              <>
+                <span className="font-sans text-[11px] text-white/40 line-through">
+                  ₹{product.originalPrice.toLocaleString("en-IN")}
+                </span>
+                <span className="font-sans text-[10px] text-emerald-400 font-bold">
+                  {discountPercent}% OFF
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Available Color Swatches & View Product Link */}
-        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+        {/* Footer: Color Swatches & View CTA */}
+        <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.08]">
           {/* Color Selectors */}
           <div className="flex items-center gap-1.5">
             {product.availableColors.map((color) => (
@@ -135,7 +208,7 @@ export function ProductCard3D({ product, onSelectProduct }: ProductCard3DProps) 
                 title={color.name}
                 className={`w-3.5 h-3.5 rounded-full border transition-all ${
                   selectedColor.id === color.id
-                    ? "scale-125 border-white ring-1 ring-white/40"
+                    ? "scale-125 border-white ring-1 ring-white/50"
                     : "border-white/20 hover:scale-110"
                 }`}
                 style={{ backgroundColor: color.hex }}
@@ -146,10 +219,10 @@ export function ProductCard3D({ product, onSelectProduct }: ProductCard3DProps) 
           {/* View Product CTA */}
           <button
             onClick={() => onSelectProduct(product)}
-            className="flex items-center gap-1 font-mono-clean text-xs uppercase tracking-widest text-white/80 group-hover:text-white transition-colors"
+            className="flex items-center gap-1 font-sans text-[11px] uppercase tracking-wider font-bold text-white/70 hover:text-white transition-colors"
           >
-            <span>VIEW PRODUCT</span>
-            <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <span>Details</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
